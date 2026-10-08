@@ -11,9 +11,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# This personal fork validates owned branches. Public code uses free hosted
+# runners; the private dedicated server is never exposed to external fork PRs.
 jobs:
   check:
     if: github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)
@@ -172,6 +174,9 @@ jobs:
           else
             echo "Transfer budget report was not produced." >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      # Keep the budget assertions and report in the job summary without storing
+      # artifacts. The inherited PR-comment consumer is upstream-only.
 
   # Split out of Check and Test: both paid ~7-9s to install a Rust toolchain
   # for checks that take under 3s, on the critical path of every PR.
